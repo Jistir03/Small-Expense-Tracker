@@ -15,10 +15,15 @@ No test suite is configured.
 
 ## Architecture
 
-This is a single-component React app (Vite + React 19). All logic lives in `src/App.jsx`:
+React 19 + Vite app split into four components:
 
-- **State**: `transactions` array (id, description, amount, type, category, date), plus form fields (`description`, `amount`, `type`, `category`) and filter fields (`filterType`, `filterCategory`).
-- **Derived values**: `totalIncome`, `totalExpenses`, and `balance` are computed directly from `transactions` on each render — no memoization.
-- **Known bugs**: `amount` is stored as a string, so numeric operations (sum, balance) use string concatenation instead of addition, producing incorrect totals.
-- **No persistence**: state resets on page reload; there is no backend or localStorage.
-- **Categories**: hardcoded array — `["food", "housing", "utilities", "transport", "entertainment", "salary", "other"]`.
+- **`App.jsx`** — Root component. Owns the `transactions` array (the only shared state). Passes data and callbacks down to children.
+- **`Summary.jsx`** — Receives `transactions`, computes `totalIncome`, `totalExpenses`, and `balance` internally, and displays the three summary cards.
+- **`TransactionForm.jsx`** — Owns its own form state (`description`, `amount`, `type`, `category`). Calls `onAdd(transaction)` prop with a fully constructed transaction object on submit.
+- **`TransactionList.jsx`** — Receives `transactions`, owns filter state (`filterType`, `filterCategory`) internally, and renders the filtered table.
+
+**Transaction shape**: `{ id, description, amount (number), type ("income"|"expense"), category, date (YYYY-MM-DD) }`
+
+**Categories**: hardcoded in both `TransactionForm` and `TransactionList` — `["food", "housing", "utilities", "transport", "entertainment", "salary", "other"]`.
+
+**No persistence**: state resets on page reload; there is no backend or localStorage.
