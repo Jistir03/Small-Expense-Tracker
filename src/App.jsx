@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { toast } from 'sonner'
+import { supabase } from './lib/supabase'
 import Summary from './Summary'
 import TransactionForm from './TransactionForm'
 import TransactionList from './TransactionList'
@@ -9,19 +11,10 @@ import { Toaster } from './components/ui/sonner'
 import { BarChart2, Table2 } from 'lucide-react'
 
 function App() {
-  const [transactions, setTransactions] = useState([
-    { id: 1, description: "Salary",        amount: 5000, type: "income",  category: "salary",        date: "2025-01-01" },
-    { id: 2, description: "Rent",          amount: 1200, type: "expense", category: "housing",       date: "2025-01-02" },
-    { id: 3, description: "Groceries",     amount: 150,  type: "expense", category: "food",          date: "2025-01-03" },
-    { id: 4, description: "Freelance Work",amount: 800,  type: "income",  category: "salary",        date: "2025-01-05" },
-    { id: 5, description: "Electric Bill", amount: 95,   type: "expense", category: "utilities",     date: "2025-01-06" },
-    { id: 6, description: "Dinner Out",    amount: 65,   type: "expense", category: "food",          date: "2025-01-07" },
-    { id: 7, description: "Gas",           amount: 45,   type: "expense", category: "transport",     date: "2025-01-08" },
-    { id: 8, description: "Netflix",       amount: 15,   type: "expense", category: "entertainment", date: "2025-01-10" },
-  ]);
-
-  const [activeTab,   setActiveTab]   = useState("dashboard");
-  const [dashView,    setDashView]    = useState("table");    // "table" | "charts"
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [activeTab, setActiveTab]       = useState("dashboard");
+  const [dashView,  setDashView]        = useState("table");
 
   const [isDark, setIsDark] = useState(
     () =>
@@ -29,6 +22,7 @@ function App() {
       (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)
   );
 
+  // Dark mode
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -39,13 +33,58 @@ function App() {
     }
   }, [isDark]);
 
-  const handleAdd = (transaction) => {
-    setTransactions([...transactions, transaction]);
+  // Load transactions from Supabase on mount
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('date', { ascending: false });
+      if (error) {
+        toast.error('Failed to load transactions', { description: error.message });
+      } else {
+        setTransactions(data);
+      }
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  const handleAdd = async (transaction) => {
+    const { data, error } = await supabase
+      .from('transactions')
+      .insert({
+        description: transaction.description,
+        amount:      transaction.amount,
+        type:        transaction.type,
+        category:    transaction.category,
+        date:        transaction.date,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast.error('Failed to add transaction', { description: error.message });
+      return;
+    }
+
+    setTransactions(prev => [data, ...prev]);
     setActiveTab("dashboard");
   };
 
-  const handleDelete = (id) => {
-    setTransactions(transactions.filter(t => t.id !== id));
+  const handleDelete = async (id) => {
+    const { error } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast.error('Failed to delete transaction', { description: error.message });
+      return;
+    }
+
+    setTransactions(prev => prev.filter(t => t.id !== id));
   };
 
   return (
@@ -84,7 +123,11 @@ function App() {
               </Button>
             </div>
 
-            {dashView === "table" ? (
+            {loading ? (
+              <p className="text-muted-foreground text-sm text-center py-12">
+                Loading transactions…
+              </p>
+            ) : dashView === "table" ? (
               <TransactionList transactions={transactions} onDelete={handleDelete} />
             ) : (
               <Charts transactions={transactions} />

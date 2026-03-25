@@ -48,4 +48,28 @@ React 19 + Vite app with Tailwind CSS v4 and shadcn/ui components.
 **Categories**: hardcoded in `TransactionForm` and `TransactionList` —
 `["food", "housing", "utilities", "transport", "entertainment", "salary", "other"]`
 
-**No persistence**: state resets on page reload; there is no backend or localStorage (theme preference is the only thing stored in localStorage).
+**Persistence**: transactions are stored in a Supabase PostgreSQL table. Theme preference is stored in localStorage.
+
+## Supabase setup
+
+Requires two environment variables in a `.env` file (git-ignored):
+```
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
+
+See `.env.example` for the template. For Vercel, add these same vars under Project Settings → Environment Variables.
+
+The Supabase client singleton lives in `src/lib/supabase.js`. Table schema:
+```sql
+create table transactions (
+  id bigint primary key generated always as identity,
+  description text not null,
+  amount numeric not null,
+  type text not null check (type in ('income', 'expense')),
+  category text not null,
+  date date not null,
+  created_at timestamptz default now()
+);
+alter table transactions disable row level security;
+```

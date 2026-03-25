@@ -19,12 +19,11 @@ function TransactionForm({ onAdd }) {
   const [type, setType] = useState("expense");
   const [category, setCategory] = useState("food");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!description || !amount) return;
 
-    onAdd({
-      id: Date.now(),
+    await onAdd({
       description,
       amount: parseFloat(amount),
       type,
